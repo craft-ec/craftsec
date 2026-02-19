@@ -1,0 +1,24 @@
+[package]
+name = "craftsec-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "craftsec"
+path = "src/main.rs"
+
+[dependencies]
+craftsec-core = { workspace = true }
+craftsec-dkg = { workspace = true }
+craftsec-signing = { workspace = true }
+craftsec-node = { workspace = true }
+craftsec-client = { workspace = true }
+
+clap = { version = "4", features = ["derive"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+sha2 = { workspace = true }
