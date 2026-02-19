@@ -374,6 +374,53 @@ mod tests {
     }
 
     #[test]
+    fn receipt_with_threshold_signature() {
+        use craftsec_core::AttestationReceipt;
+
+        let config = ThresholdConfig::new(2, 3).unwrap();
+        let key_shares = run_dkg(&config, &mut OsRng).unwrap();
+        let gpk = key_shares[0].group_public_key;
+
+        let mut receipt = AttestationReceipt::new(
+            "Qm_transfer".into(),
+            b"{\"amount\":50}",
+            b"{\"status\":\"valid\"}",
+            1706000000,
+        );
+        let message = receipt.signing_bytes();
+
+        let signers = &[0usize, 1];
+        let mut nonces = Vec::new();
+        let mut commitments = Vec::new();
+        for &i in signers {
+            let (n, c) = craftsec_signing::generate_nonces(key_shares[i].index, &mut OsRng);
+            nonces.push(n);
+            commitments.push(c);
+        }
+
+        let mut partials = Vec::new();
+        for (idx, &i) in signers.iter().enumerate() {
+            let p = craftsec_signing::sign_partial(&key_shares[i], &nonces[idx], &message, &commitments).unwrap();
+            partials.push(p);
+        }
+
+        let sig = aggregate(&message, &commitments, &partials);
+        let sig_bytes = [
+            sig.r.compress().as_bytes().as_slice(),
+            sig.s.as_bytes().as_slice(),
+        ].concat();
+        receipt.add_signature(0, hex::encode(&sig_bytes));
+
+        verify(&sig, &gpk, &message).unwrap();
+        assert!(receipt.verify_signatures());
+
+        // Tamper detection
+        let mut tampered = receipt.clone();
+        tampered.timestamp = 9999;
+        assert_ne!(receipt.signing_bytes(), tampered.signing_bytes());
+    }
+
+    #[test]
     fn multi_program_one_rejects() {
         let config = ThresholdConfig::new(2, 3).unwrap();
         let key_shares = run_dkg(&config, &mut OsRng).unwrap();
