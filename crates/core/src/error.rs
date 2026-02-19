@@ -23,6 +23,9 @@ pub enum CraftSecError {
     #[error("program error: {0}")]
     ProgramError(String),
 
+    #[error("program frozen: {0}")]
+    ProgramFrozen(String),
+
     #[error("serialization error: {0}")]
     SerializationError(String),
 }

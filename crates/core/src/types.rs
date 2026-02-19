@@ -53,6 +53,34 @@ pub struct AttestationRequest {
     pub request_id: String,
 }
 
+/// Multi-program attestation request — requires all programs to validate.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiAttestationRequest {
+    /// Program CIDs that must all independently validate.
+    pub program_cids: Vec<String>,
+    /// The requester's DID.
+    pub requester: String,
+    /// Program arguments (JSON).
+    pub args: serde_json::Value,
+    /// Unique request ID.
+    pub request_id: String,
+}
+
+impl MultiAttestationRequest {
+    /// Convert to individual AttestationRequests.
+    pub fn to_individual_requests(&self) -> Vec<AttestationRequest> {
+        self.program_cids
+            .iter()
+            .map(|cid| AttestationRequest {
+                program_cid: cid.clone(),
+                requester: self.requester.clone(),
+                args: self.args.clone(),
+                request_id: format!("{}-{}", self.request_id, cid),
+            })
+            .collect()
+    }
+}
+
 /// Result of program attestation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AttestationResult {
@@ -60,6 +88,22 @@ pub enum AttestationResult {
     Valid(Transaction),
     /// Program rejected the request.
     Invalid(String),
+}
+
+/// Result of multi-program attestation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MultiAttestationResult {
+    /// All programs validated — includes per-program signature bytes.
+    Valid {
+        transaction: Transaction,
+        /// (program_cid, signature_bytes) for each program.
+        program_signatures: Vec<(String, Vec<u8>)>,
+    },
+    /// At least one program rejected — includes the rejecting program and reason.
+    Invalid {
+        program_cid: String,
+        reason: String,
+    },
 }
 
 /// A transaction to be attested (signed by the threshold group).
