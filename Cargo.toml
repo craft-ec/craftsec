@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/dkg",
+    "crates/signing",
+    "crates/node",
+    "crates/client",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Craftec"]
+license = "MIT"
+
+[workspace.dependencies]
+# Internal crates
+craftsec-core = { path = "crates/core" }
+craftsec-dkg = { path = "crates/dkg" }
+craftsec-signing = { path = "crates/signing" }
+craftsec-node = { path = "crates/node" }
+craftsec-client = { path = "crates/client" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Crypto
+curve25519-dalek = { version = "4.1", features = ["group"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+sha2 = "0.10"
+rand = "0.8"
+
+# Async
+tokio = { version = "1.35", features = ["full"] }
+
+# Misc
+thiserror = "1"
+hex = "0.4"
