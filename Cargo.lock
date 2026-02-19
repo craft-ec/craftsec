@@ -178,6 +178,7 @@ name = "craftsec-dkg"
 version = "0.1.0"
 dependencies = [
  "craftsec-core",
+ "craftsec-signing",
  "curve25519-dalek",
  "rand",
  "serde",

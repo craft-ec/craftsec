@@ -5,7 +5,9 @@
 //! shared public key without any party knowing the full private key.
 
 pub mod feldman;
+pub mod pdk;
 pub mod polynomial;
 
 pub use feldman::*;
+pub use pdk::*;
 pub use polynomial::*;

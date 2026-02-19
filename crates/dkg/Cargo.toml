@@ -14,4 +14,6 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+craftsec-signing = { workspace = true }
 serde_json = { workspace = true }
+rand = { workspace = true }
