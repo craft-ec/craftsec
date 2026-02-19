@@ -7,6 +7,9 @@ members = [
     "crates/node",
     "crates/client",
 ]
+exclude = [
+    "examples/transfer-validator",
+]
 
 [workspace.package]
 version = "0.1.0"

@@ -8,13 +8,31 @@ use craftsec_signing::{
     generate_nonces, sign_partial,
 };
 use crate::executor::ProgramRegistry;
+use crate::wasm_executor::WasmProgramRegistry;
+
+/// Trait for program execution backends.
+pub trait ProgramExecutor {
+    fn execute(&self, request: &AttestationRequest) -> Result<AttestationResult>;
+}
+
+impl ProgramExecutor for ProgramRegistry {
+    fn execute(&self, request: &AttestationRequest) -> Result<AttestationResult> {
+        ProgramRegistry::execute(self, request)
+    }
+}
+
+impl ProgramExecutor for WasmProgramRegistry {
+    fn execute(&self, request: &AttestationRequest) -> Result<AttestationResult> {
+        WasmProgramRegistry::execute(self, request)
+    }
+}
 
 /// A CraftSEC threshold node.
-pub struct CraftSecNode {
+pub struct CraftSecNode<E: ProgramExecutor = ProgramRegistry> {
     /// This node's key share.
     pub key_share: KeyShare,
-    /// Program registry for validation.
-    pub registry: ProgramRegistry,
+    /// Program executor for validation.
+    pub registry: E,
 }
 
 /// Result of processing an attestation request at a node.
@@ -32,8 +50,8 @@ pub struct NodeSignature {
     pub partial: PartialSignature,
 }
 
-impl CraftSecNode {
-    pub fn new(key_share: KeyShare, registry: ProgramRegistry) -> Self {
+impl<E: ProgramExecutor> CraftSecNode<E> {
+    pub fn new(key_share: KeyShare, registry: E) -> Self {
         Self { key_share, registry }
     }
 

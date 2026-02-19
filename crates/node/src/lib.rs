@@ -2,6 +2,8 @@
 
 pub mod executor;
 pub mod node;
+pub mod wasm_executor;
 
 pub use executor::*;
 pub use node::*;
+pub use wasm_executor::*;
