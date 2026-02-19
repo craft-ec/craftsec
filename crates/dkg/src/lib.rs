@@ -7,7 +7,9 @@
 pub mod feldman;
 pub mod pdk;
 pub mod polynomial;
+pub mod rotation;
 
 pub use feldman::*;
 pub use pdk::*;
 pub use polynomial::*;
+pub use rotation::*;
