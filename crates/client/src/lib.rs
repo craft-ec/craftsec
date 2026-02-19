@@ -1,6 +1,8 @@
 //! CraftSEC client SDK — routes attestation requests to threshold nodes,
 //! collects signature shares, aggregates into final signature.
 
+pub mod transport;
+
 use craftsec_core::{
     AttestationRequest, AttestationResult, CraftSecError, Result, Transaction,
 };
@@ -9,6 +11,8 @@ use craftsec_signing::{
     aggregate, verify,
 };
 use curve25519_dalek::EdwardsPoint;
+
+pub use transport::{LocalTransport, P2pTransport};
 
 /// Response from a node for Round 1.
 pub struct Round1Response {
@@ -136,54 +140,8 @@ mod tests {
     use craftsec_core::ThresholdConfig;
     use craftsec_dkg::run_dkg;
     use craftsec_node::{CraftSecNode, ProgramRegistry, transfer_validator, ValidatorFn};
-    use craftsec_signing::SigningCommitment;
     use rand::rngs::OsRng;
-    use std::cell::RefCell;
-
-    /// In-memory transport that directly calls nodes.
-    struct LocalTransport {
-        nodes: Vec<CraftSecNode>,
-        /// Store nonces from round 1 for use in round 2.
-        nonces: RefCell<Vec<Option<craftsec_signing::SigningNonce>>>,
-    }
-
-    impl LocalTransport {
-        fn new(nodes: Vec<CraftSecNode>) -> Self {
-            let n = nodes.len();
-            Self {
-                nodes,
-                nonces: RefCell::new(vec![None; n]),
-            }
-        }
-    }
-
-    impl NodeTransport for LocalTransport {
-        fn round1(&self, node_index: usize, request: &AttestationRequest) -> Result<Round1Response> {
-            let resp = self.nodes[node_index].process_request(request, &mut OsRng)?;
-            // Store nonce for round 2
-            self.nonces.borrow_mut()[node_index] = resp.nonce;
-            Ok(Round1Response {
-                result: resp.result,
-                commitment: resp.commitment,
-            })
-        }
-
-        fn round2(
-            &self,
-            node_index: usize,
-            message: &[u8],
-            commitments: &[SigningCommitment],
-        ) -> Result<Round2Response> {
-            let nonce = self.nonces.borrow()[node_index]
-                .as_ref()
-                .ok_or_else(|| CraftSecError::InvalidSignature("no nonce for node".into()))?
-                .clone();
-            let sig = self.nodes[node_index].sign(&nonce, message, commitments)?;
-            Ok(Round2Response {
-                partial: sig.partial,
-            })
-        }
-    }
+    use std::time::Duration;
 
     fn make_nodes(t: u32, n: u32) -> (Vec<CraftSecNode>, EdwardsPoint) {
         let config = ThresholdConfig::new(t, n).unwrap();
@@ -264,6 +222,73 @@ mod tests {
                 "balance": 10.0
             }),
             request_id: "req-3".into(),
+        };
+
+        assert!(client.attest(&request).is_err());
+    }
+
+    #[test]
+    fn full_flow_over_p2p_transport() {
+        let (nodes, gpk) = make_nodes(2, 3);
+        let transport = P2pTransport::new(nodes, Duration::from_millis(5));
+        let client = CraftSecClient::new(transport, gpk, 2, 3);
+
+        let request = AttestationRequest {
+            program_cid: "Qm_transfer".into(),
+            requester: "did:alice".into(),
+            args: serde_json::json!({
+                "recipient": "did:bob",
+                "amount": 50.0,
+                "seq": 1,
+                "prev_hash": "0000",
+                "timestamp": 1000
+            }),
+            request_id: "req-p2p-1".into(),
+        };
+
+        let attested = client.attest(&request).unwrap();
+        attested.verify().unwrap();
+        assert_eq!(attested.transaction.sender, "did:alice");
+    }
+
+    #[test]
+    fn p2p_transport_3_of_5() {
+        let (nodes, gpk) = make_nodes(3, 5);
+        let transport = P2pTransport::new(nodes, Duration::from_millis(2));
+        let client = CraftSecClient::new(transport, gpk, 3, 5);
+
+        let request = AttestationRequest {
+            program_cid: "Qm_transfer".into(),
+            requester: "did:alice".into(),
+            args: serde_json::json!({
+                "recipient": "did:charlie",
+                "amount": 100.0,
+                "seq": 42,
+                "prev_hash": "abc123",
+                "timestamp": 2000
+            }),
+            request_id: "req-p2p-2".into(),
+        };
+
+        let attested = client.attest(&request).unwrap();
+        attested.verify().unwrap();
+    }
+
+    #[test]
+    fn p2p_rejects_invalid() {
+        let (nodes, gpk) = make_nodes(2, 3);
+        let transport = P2pTransport::new(nodes, Duration::from_millis(1));
+        let client = CraftSecClient::new(transport, gpk, 2, 3);
+
+        let request = AttestationRequest {
+            program_cid: "Qm_transfer".into(),
+            requester: "did:alice".into(),
+            args: serde_json::json!({
+                "recipient": "did:bob",
+                "amount": 50.0,
+                "balance": 10.0
+            }),
+            request_id: "req-p2p-3".into(),
         };
 
         assert!(client.attest(&request).is_err());

@@ -8,15 +8,14 @@ license.workspace = true
 [dependencies]
 craftsec-core = { workspace = true }
 craftsec-signing = { workspace = true }
+craftsec-node = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 curve25519-dalek = { workspace = true }
+rand = { workspace = true }
 
 [dev-dependencies]
 craftsec-dkg = { workspace = true }
-craftsec-node = { workspace = true }
-rand = { workspace = true }
 ed25519-dalek = { workspace = true }
-curve25519-dalek = { workspace = true }
 sha2 = { workspace = true }
